@@ -1,4 +1,69 @@
-ize - 2))
+
+"""
+Training, inference, BLEU evaluation, and checkpoint utilities for
+DA6401 Assignment 3.
+"""
+
+import argparse
+from collections import Counter
+import math
+import os
+from pathlib import Path
+import random
+from typing import Optional
+
+import gdown
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
+
+from dataset import EOS_TOKEN, PAD_TOKEN, SOS_TOKEN, Multi30kDataset
+from lr_scheduler import NoamScheduler
+from model import (
+    DEFAULT_CHECKPOINT_PATH,
+    MultiHeadAttention,
+    Transformer,
+    _checkpoint_candidates,
+    make_src_mask,
+    make_tgt_mask,
+)
+
+
+class LabelSmoothingLoss(nn.Module):
+    """
+    Label smoothing as in "Attention Is All You Need".
+    """
+
+    def __init__(self, vocab_size: int, pad_idx: int, smoothing: float = 0.1) -> None:
+        super().__init__()
+        if not 0.0 <= smoothing < 1.0:
+            raise ValueError("smoothing must be in the range [0, 1)")
+        if not 0 <= pad_idx < vocab_size:
+            raise ValueError("pad_idx must be a valid vocabulary index")
+
+        self.vocab_size = vocab_size
+        self.pad_idx = pad_idx
+        self.smoothing = smoothing
+        self.confidence = 1.0 - smoothing
+        self.criterion = nn.KLDivLoss(reduction="sum")
+
+    def forward(self, logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            logits: shape [batch * tgt_len, vocab_size]
+            target: shape [batch * tgt_len]
+        """
+        logits = logits.reshape(-1, self.vocab_size)
+        target = target.reshape(-1)
+        log_probs = F.log_softmax(logits, dim=-1)
+
+        with torch.no_grad():
+            true_dist = torch.zeros_like(log_probs)
+            if self.vocab_size > 2:
+                true_dist.fill_(self.smoothing / (self.vocab_size - 2))
             true_dist[:, self.pad_idx] = 0.0
             true_dist.scatter_(1, target.unsqueeze(1), self.confidence)
             true_dist[:, self.pad_idx] = 0.0
