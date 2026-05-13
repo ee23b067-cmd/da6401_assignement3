@@ -31,4 +31,9 @@ The script saves checkpoints under `checkpoints/` and writes the best model to `
 
 ## Submission Notes
 
-The code is kept submission-safe: it does not require W&B authentication or any external experiment logging service. For automated evaluation, the important outputs are the model implementation, the Noam scheduler, positional encoding, and the saved checkpoint.
+The code is kept submission-safe: For automated evaluation, the important outputs are the model implementation, the Noam scheduler, positional encoding, and the saved checkpoint.
+
+
+Git link : https://github.com/ee23b067-cmd/da6401_assignement3/tree/main
+
+wandb Report link : https://wandb.ai/sadamrk2005-indian-institute-of-technology-madras/DA6401_assignement3/reportlist
