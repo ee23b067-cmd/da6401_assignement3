@@ -4,3 +4,4 @@ scikit-learn
 datasets
 spacy
 tqdm
+gdown
